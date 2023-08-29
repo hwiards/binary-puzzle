@@ -1,16 +1,20 @@
 from rules import *
+import os
+import sys
 
 RULES = [(rule_equal_numbers_next_to_each_other, "no triplets or more horizontally"),
          (rule_equal_numbers_above_each_other, "no triplets or more vertically"),
          (rule_sandwich_h, "tripplet sandwich rule horizontally"),
          (rule_sandwich_v, "tripplet sandwich rule vertically"),
          (rule_half_half_h, "half half rule horizontally"),
-         (rule_half_half_v, "half half rule vertically")]
+         (rule_half_half_v, "half half rule vertically"),
+         (rule_no_double_row, "no double row"),
+         (rule_no_double_col, "no double col"),
+         ]
 
 COMPLEX_RULES = [(rule_complex_three_consecutive_h, "complex three consecutive rule horizontally"),
                     (rule_complex_three_consecutive_v, "complex three consecutive rule vertically"),
 ]
-
 
 def read_input_file(filename: str):
     with open(filename, "r") as f:
@@ -23,8 +27,6 @@ def read_input_file(filename: str):
         if not is_square(matrix):
             raise Exception("Matrix is not square")
         return matrix
-
-
 
 def solve(matrix):
     """Solves the matrix"""
@@ -57,42 +59,31 @@ def solve(matrix):
     print(is_valid(matrix))
     return matrix
 
+def solve_backtracking(matrix, row = 0, col = 0):
+    N = len(matrix)
+    if row == N - 1 and col == N:
+        return True
 
+    if col == N:
+        row += 1
+        col = 0
 
-def solve2(matrix, row=0, col=0):
-    """Solves the matrix"""
-    while not is_done(matrix):
-        old_matrix = [line[:] for line in matrix]
-        for rule, name in RULES:
-            matrix_ = [line[:] for line in matrix]
-            rule(matrix_)
-            if matrix_ == matrix:
-                continue
-            print("Rule: " + name)
-            print_matrix_diff(matrix_, matrix)
-            matrix = matrix_
-        if old_matrix == matrix:
-            print("No more rules apply - try backtracking")
+    if matrix[row][col] is not None:
+        return solve_backtracking(matrix, row, col + 1)
 
-
-
-    print("Done!")
-    return matrix
-
-
-
-
-
-
+    for num in [0, 1]:
+        matrix [row][col] = num
+        if is_valid(matrix) and solve_backtracking(matrix, row, col+1):
+            return True
+        matrix[row][col] = None
+    return False
 
 
 def print_matrix(matrix):
     for line in matrix:
         for cell in line:
-            if cell is None:
-                print("_", end="")
-            else:
-                print(cell, end="")
+            char = "_" if cell is None else cell
+            print(char, end="")
         print()
     print()
 
@@ -110,7 +101,38 @@ def print_matrix_diff(matrix_new, matrix_old):
         print()
     print()
 
+def test():
+    for filename in os.listdir('solutions'):
+        solution = read_input_file(f"solutions/{filename}")
+        input = read_input_file(f"input/{filename}")
+
+        solve_backtracking(input)
+        if solution != input:
+            print("ERROR")
+            print_matrix_diff(input, solution)
+            return False
+    print("SUCCESS")
+    return True
+
+
 if __name__ == '__main__':
-    result = read_input_file("input/6x6_1.txt")
-    print_matrix(result)
-    solve(result)
+
+    if len(sys.argv) == 1:
+        print("Error: no argument")
+        exit(1)
+
+    # Join multiple arguments into one filename
+    filename = " ".join(sys.argv[1:])
+
+    # read the input and print it
+    matrix = read_input_file(f"input/{filename}")
+    print("The input is:")
+    print_matrix(matrix)
+
+    # solve the input and if successful print it
+    res = solve_backtracking(matrix, 0, 0)
+    if res:
+        print("The solution is:")
+        print_matrix(matrix)
+    else:
+        print("Could not solve the puzzle")
